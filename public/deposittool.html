@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+	<meta charset="utf-8" />
+
+	<script type="text/javascript">
+		function post(URL, PARAMS) {
+			var temp = document.createElement("form");
+			temp.action = URL;
+			temp.method = "post";
+			temp.target = "nm_iframe";
+			temp.style.display = "none";
+			for (var x in PARAMS) {
+				var opt = document.createElement("textarea");
+				opt.name = x;
+				opt.value = PARAMS[x];
+				// alert(opt.name)
+				temp.appendChild(opt);
+			}
+			document.body.appendChild(temp);
+			temp.submit();
+			return temp;
+		}
+
+		function formSubmit(params) {
+			var form = document.getElementById("myForm");
+			var date = new Date();
+			params["LinkId"] = date.valueOf();
+
+			params["GameID"] = Number(form.elements["GameID"].value);
+			params["UserID"] = Number(form.elements["UserID"].value);
+			params["Deposit"] = Number(form.elements["Deposit"].value);
+
+			localStorage.setItem("GameID", params["GameID"]);
+			localStorage.setItem("UserID", params["UserID"]);
+			localStorage.setItem("Deposit", params["Deposit"]);
+
+			post("http://silversvcb.uc108.org:1505/api/Silver/DoDeposit", params);
+		}
+
+		function Desc() {
+			var params = { 
+				"OpType": 2,
+				"OperationID": 1590701,
+				"UserID": 711022,
+				"GameID": 68,
+				"IP": "192.168.1.1.",
+				"Description": "string",
+				"Deposit": 1300,
+				"ExDeposit": 0,
+				"ClientType": 0,
+				"PayPwd": "string",
+				"ExtInfo": "string",
+				"LinkId": "str00i3ng12",
+				"PlatformID": 159,
+				"SignDate": "20181022",
+				"Credential": "F94DD8901374EC1BC213AD25904B7965"
+			}
+
+			formSubmit(params);
+		}
+
+		function Add() {
+			var params = {
+				"OpType": 2,
+				"OperationID": 860304,
+				"UserID": 706826,
+				"GameID": 283,
+				"IP": "192.168.1.1.",
+				"Description": "string",
+				"Deposit": 1000,
+				"ExDeposit": 0,
+				"ClientType": 0,
+				"PayPwd": "string",
+				"ExtInfo": "string",
+				"LinkId": "str00i3ng12",
+				"PlatformID": 86,
+				"SignDate": "20181022",
+				"Credential": "E86D79541EDFDC8C27BAFDE14243632E"
+			}
+
+			formSubmit(params);
+
+			// 使用 setTimeout 在一秒后执行 DescExtra
+			setTimeout(DescExtra, 500);
+
+
+		}
+
+		function DescExtra() {
+			var params = { 
+				"OpType": 2,
+				"OperationID": 1590701,
+				"UserID": 711022,
+				"GameID": 68,
+				"IP": "192.168.1.1.",
+				"Description": "string",
+				"Deposit": 1300,
+				"ExDeposit": 0,
+				"ClientType": 0,
+				"PayPwd": "string",
+				"ExtInfo": "string",
+				"LinkId": "str00i3ng12",
+				"PlatformID": 159,
+				"SignDate": "20181022",
+				"Credential": "F94DD8901374EC1BC213AD25904B7965"
+			}
+
+			var form = document.getElementById("myForm");
+			var date = new Date();
+			params["LinkId"] = date.valueOf();
+
+			params["GameID"] = Number(form.elements["GameID"].value);
+			params["UserID"] = Number(form.elements["UserID"].value);
+			params["Deposit"] = 0;
+
+			post("http://silversvcb.uc108.org:1505/api/Silver/DoDeposit", params);
+		}
+
+		function load(){
+			var gameID = localStorage.getItem("GameID");
+			var userID = localStorage.getItem("UserID");
+			var deposit = localStorage.getItem("Deposit");
+			var form = document.getElementById("myForm");
+			form.elements["GameID"].value = gameID;
+			form.elements["UserID"].value = userID;
+			form.elements["Deposit"].value = deposit;
+		}
+	</script>
+</head>
+
+<body onload="load();">
+	<form id="myForm" action="http://silversvcb.uc108.org:1505/api/Silver/DoDeposit" method="post">
+		GameID: <input type="number" name="GameID" size="20"><br />
+		UserID: <input type="number" name="UserID" size="20"><br />
+		Number: <input type="number" name="Deposit" size="20"><br />
+		<br />
+		<input type="button" onclick="Desc()" value="扣银子">
+		<input type="button" onclick="Add()" value="加银子">
+	</form>
+	<iframe id="id_iframe" name="nm_iframe" ></iframe>    
+	<br>
+	<br>
+	<br>
+	<p>
+		电脑IP授权:
+		
+		<a href="http://silver.admin.ct108.org:1045/c/silver/clienthost/clienthostlist.aspx">http://silver.admin.ct108.org:1045/c/silver/clienthost/clienthostlist.aspx</a> <br>
+		硬盘序列号都用 a8953b83
+	</p>
+	<p>
+		详情参考查询手册：<a href="http://doc.uc108.org:8002/web/#/305?page_id=4009">http://doc.uc108.org:8002/web/#/305?page_id=4009</a>
+	</p>
+</body>
+
+</html>

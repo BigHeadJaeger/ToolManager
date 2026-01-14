@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比鸡复盘器</title>
+    <style>
+        /* 整体布局 */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+        }
+
+        /* 搜索区域 */
+        .search-area {
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .search-area input {
+            margin: 0 10px;
+            padding: 5px;
+        }
+
+        .search-dropdown {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            width: calc(100% - 20px);
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* 游戏列表区域 */
+        .game-list {
+            width: 200px;
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            float: left;
+        }
+
+        .game-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .game-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* 状态列表区域 */
+        .state-list {
+            width: 300px;
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            float: right;
+        }
+
+        .state-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .state-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .state-item.active {
+            background-color: #e0e0e0;
+        }
+
+        /* 牌桌样式 */
+        .table {
+            width: 1700px;
+            height: 820px;
+            background: url('skin/table_0.jpg');
+            background-size: cover;
+            position: relative;
+        }
+
+        /* 轮次显示 */
+        .round-info {
+            position: absolute;
+            top: 10%;
+            left: 80%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        /* 玩家区域 */
+        .player {
+            position: absolute;
+            width: 450px;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+        }
+
+        .top-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .player-info {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 14px;
+            min-width: 45%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-info div {
+            margin-bottom: 3px;
+        }
+
+        .player-0 { /* 下方玩家 */
+            bottom: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .player-1 { /* 左侧玩家 */
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            transform-origin: left center;
+        }
+
+        .player-2 { /* 上侧玩家 */
+            right: 10px;
+            top: 10px;
+        }
+
+        .player-3 { /* 右侧玩家 */
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            transform-origin: right center;
+        }
+        
+        .player-4 { /* 左上角玩家 */
+            top: 10px;
+            left: 10px;
+        }
+
+        /* 牌区域 */
+        .card-area {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            color: #ffffff;
+            font-weight: bold;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+        }
+
+        .hand-cards {
+            background: rgba(0, 0, 255, 0.2);
+        }
+
+        .throw-cards {
+            background: rgba(255, 0, 0, 0.2);
+            margin-bottom: 5px;
+        }
+
+        .hu-cards {
+            background: rgba(0, 255, 0, 0.2);
+            margin-bottom: 5px;
+            min-width: 70%;
+        }
+
+        /* 左右玩家的牌区域特殊样式 */
+        .player-1 .card-area, .player-3 .card-area , .player-2 .card-area, .player-0 .card-area, .player-4 .card-area {
+            display: flex;
+            flex-direction: row;
+            overflow-x: auto;
+            max-width: 450px;
+        }
+
+        .player-1 .card-area-hu, .player-3 .card-area-hu , .player-2 .card-area-hu, .player-0 .card-area-hu, .player-4 .card-area-hu {
+            display: flex;
+            flex-direction: row;
+            overflow-x: auto;
+            max-width: 450px;
+        }
+
+        .card-area img {
+            width: 45px;
+            height: 63px;
+            margin-left: -22.5px; /* 负边距使牌堆叠,覆盖50% */
+        }
+        /* 牌区域 */
+        .card-area-hu {
+            margin: 10px 0;
+            align-items: center;
+            border-radius: 5px;
+            color: #ffffff;
+            font-weight: bold;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+        }
+
+        .card-area-hu img {
+            width: 45px;
+            height: 63px;
+            margin-left: -22.5px; /* 负边距使牌堆叠,覆盖50% */
+        }
+
+        .card-area-hu img:first-child {
+            margin-left: 0; /* 第一张牌不需要负边距 */
+        }
+
+        .card-area img:first-child {
+            margin-left: 0; /* 第一张牌不需要负边距 */
+        }
+
+        /* 控制按钮 */
+        .controls {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .controls button {
+            margin: 0 10px;
+            padding: 5px 15px;
+        }
+
+        /* 主要内容区布局 */
+        .main-content {
+            display: flex;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* 该轮总输赢变化样式 */
+        .score-change {
+            color: #ffeb3b;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .score-change.positive {
+            color: #4caf50;
+        }
+
+        .score-change.negative {
+            color: #f44336;
+        }
+
+        /* 特殊牌型样式 */
+        .special-type {
+            color: #ffd700;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        /* 银两变化样式 */
+        .deposit-change {
+            color: #00bcd4;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 搜索区域 -->
+        <div class="search-area">
+            <div style="position: relative; display: inline-block;">
+                <input type="text" id="playerIdSearch" placeholder="玩家ID" autocomplete="off">
+                <div id="playerIdDropdown" class="search-dropdown"></div>
+            </div>
+            <div style="position: relative; display: inline-block;">
+                <input type="text" id="roomIdSearch" placeholder="房间ID" autocomplete="off">
+                <div id="roomIdDropdown" class="search-dropdown"></div>
+            </div>
+            <div style="position: relative; display: inline-block;">
+                <input type="text" id="tableNoSearch" placeholder="桌子号" autocomplete="off">
+                <div id="tableNoDropdown" class="search-dropdown"></div>
+            </div>
+            <div style="position: relative; display: inline-block;">
+                <input type="time" id="startTimeSearch" placeholder="开始时间" step="1">
+            </div>
+            <div style="position: relative; display: inline-block;">
+                <input type="time" id="endTimeSearch" placeholder="结束时间" step="1">
+            </div>
+            <button onclick="searchGame()">搜索</button>
+            <button onclick="clearSearch()">清除</button>
+        </div>
+
+        <!-- 文件上传 -->
+        <input type="file" id="fileInput" multiple />
+
+        <div class="main-content">
+            <!-- 游戏列表 -->
+            <div class="game-list" id="gameList"></div>
+
+            <!-- 牌桌显示 -->
+            <div class="table">
+                <div class="player player-0">
+                    <div class="top-info">
+                        <div class="player-info">
+                            <div>昵称: <span class="nickname"></span></div>
+                            <div>ID: <span class="player-id"></span></div>
+                            <div>牌型: <span class="cardtype"></span></div>
+                        </div>
+                        <div class="player-info">
+                            <div>座位号: <span class="chair-no"></span></div>
+                            <div><span class="deposit-change"></span></div>
+                        </div>
+                    </div>
+                    <div class="card-area throw-cards">出牌区</div>
+                    <div class="card-area hand-cards">手牌区</div>
+                </div>
+                <div class="player player-1">
+                    <div class="top-info">
+                        <div class="player-info">
+                            <div>昵称: <span class="nickname"></span></div>
+                            <div>ID: <span class="player-id"></span></div>
+                            <div>牌型: <span class="cardtype"></span></div>
+                        </div>
+                        <div class="player-info">
+                            <div>座位号: <span class="chair-no"></span></div>
+                            <div><span class="deposit-change"></span></div>
+                        </div>
+                    </div>
+                    <div class="card-area throw-cards">出牌区</div>
+                    <div class="card-area hand-cards">手牌区</div>
+                </div>
+                <div class="player player-2">
+                    <div class="top-info">
+                        <div class="player-info">
+                            <div>昵称: <span class="nickname"></span></div>
+                            <div>ID: <span class="player-id"></span></div>
+                            <div>牌型: <span class="cardtype"></span></div>
+                        </div>
+                        <div class="player-info">
+                            <div>座位号: <span class="chair-no"></span></div>
+                            <div><span class="deposit-change"></span></div>
+                        </div>
+                    </div>
+                    <div class="card-area throw-cards">出牌区</div>
+                    <div class="card-area hand-cards">手牌区</div>
+                </div>
+                <div class="player player-3">
+                    <div class="top-info">
+                        <div class="player-info">
+                            <div>昵称: <span class="nickname"></span></div>
+                            <div>ID: <span class="player-id"></span></div>
+                            <div>牌型: <span class="cardtype"></span></div>
+                        </div>
+                        <div class="player-info">
+                            <div>座位号: <span class="chair-no"></span></div>
+                            <div><span class="deposit-change"></span></div>
+                        </div>
+                    </div>
+                    <div class="card-area throw-cards">出牌区</div>
+                    <div class="card-area hand-cards">手牌区</div>
+                </div>
+                <div class="player player-4">
+                    <div class="top-info">
+                        <div class="player-info">
+                            <div>昵称: <span class="nickname"></span></div>
+                            <div>ID: <span class="player-id"></span></div>
+                            <div>牌型: <span class="cardtype"></span></div>
+                        </div>
+                        <div class="player-info">
+                            <div>座位号: <span class="chair-no"></span></div>
+                            <div><span class="deposit-change"></span></div>
+                        </div>
+                    </div>
+                    <div class="card-area throw-cards">出牌区</div>
+                    <div class="card-area hand-cards">手牌区</div>
+                </div>
+            </div>
+
+            <!-- 状态列表 -->
+            <div class="state-list" id="stateList"></div>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="controls">
+            <button id="prevBtn" onclick="prevStep()">上一步</button>
+            <button id="nextBtn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        // 存储所有游戏局的数组
+        let games = [];
+        // 当前显示的游戏索引
+        let currentGameIndex = -1;
+        // 当前步骤索引
+        let currentStepIndex = -1;
+        // 当前游戏的所有状态
+        let gameStates = [];
+        // 上一步的该轮总输赢
+        let previousScores = [0, 0, 0, 0, 0];
+        // 存储当前游戏的原始日志
+        let currentGameLogs = [];
+        // 存储搜索选项
+        let searchOptions = {
+            playerIds: new Set(),
+            roomIds: new Set(),
+            tableNos: new Set()
+        };
+
+        // 特殊牌型映射
+        const cardTypeMap = {
+            1: "单张",
+            2: "对子",
+            3: "顺子",
+            4: "同花",
+            5: "同花顺",
+            6: "三条",
+        };
+
+
+        // 监听文件上传事件
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            // 清空之前的游戏数据
+            games = [];
+            currentGameIndex = -1;
+            currentStepIndex = -1;
+            gameStates = [];
+            previousScores = [0, 0, 0, 0, 0];
+            currentGameLogs = [];
+            searchOptions = {
+                playerIds: new Set(),
+                roomIds: new Set(),
+                tableNos: new Set()
+            };
+            
+            // 清空显示
+            document.getElementById('gameList').innerHTML = '';
+            document.getElementById('stateList').innerHTML = '';
+            
+            const files = e.target.files;
+            let filesProcessed = 0;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const lines = e.target.result.split(/\r?\n/);
+                    processLogFile(lines);
+                    filesProcessed++;
+                    
+                    if (filesProcessed === files.length) {
+                        updateSearchOptions();
+                        updateGameList();
+                        // 自动选择第一局游戏
+                        if (games.length > 0) {
+                            selectGame(0);
+                        }
+                    }
+                };
+                reader.readAsText(file, 'GB2312');
+            }
+        });
+
+        // 更新搜索选项
+        function updateSearchOptions() {
+            games.forEach(game => {
+                Object.values(game.title.Players).forEach(playerId => {
+                    searchOptions.playerIds.add(playerId);
+                });
+                searchOptions.roomIds.add(game.title.RoomID);
+                searchOptions.tableNos.add(game.title.TableNO);
+            });
+        }
+
+        function processLogLines(inputText) {
+            // 将输入文本按行分割
+            const lines = inputText.split('\n');
+            
+            // 处理每一行
+            return lines.map(line => {
+                if (!line) return line; // 空行保持不变
+                
+                // 新的正则表达式：匹配可能存在的数字序列 + 时间戳 + 空格，然后清理首尾空白
+                // \d+ 匹配一个或多个数字（可能是前面新增的部分）
+                // : 匹配冒号
+                // \s+ 匹配一个或多个空白字符
+                const trimmedLine = line.replace(/^\d+\s*\d{2}:\d{2}:\d{2}\s+/, '').trim();
+                return trimmedLine;
+            }).join('\n');
+        }
+
+        // 更灵活的正则表达式版本，能处理各种格式的时间戳
+        function processLogLinesFlexible(inputText) {
+            // 将输入文本按行分割
+            const lines = inputText.split('\n');
+            
+            // 处理每一行
+            return lines.map(line => {
+                if (!line) return line; // 空行保持不变
+                
+                // 更灵活的正则表达式：匹配任意数量的数字 + 时间戳 + 空格
+                // 这个模式可以处理 "0011 00:01:12" 或 "00:00:57" 这样的格式
+                const trimmedLine = line.replace(/^(?:\d+\s+)*\d{2}:\d{2}:\d{2}\s+/, '').trim();
+                return trimmedLine;
+            }).join('\n');
+        }
+
+        // 设置搜索框事件监听
+        ['playerId', 'roomId', 'tableNo'].forEach(type => {
+            const input = document.getElementById(`${type}Search`);
+            const dropdown = document.getElementById(`${type}Dropdown`);
+            
+            input.addEventListener('input', () => {
+                const value = input.value.toLowerCase();
+                const options = Array.from(searchOptions[type + 's']);
+                const filtered = options.filter(option => 
+                    option.toLowerCase().includes(value)
+                );
+                
+                dropdown.innerHTML = '';
+                filtered.forEach(option => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = option;
+                    item.onclick = () => {
+                        input.value = option;
+                        dropdown.classList.remove('show');
+                    };
+                    dropdown.appendChild(item);
+                });
+                
+                if (filtered.length > 0 && value) {
+                    dropdown.classList.add('show');
+                } else {
+                    dropdown.classList.remove('show');
+                }
+            });
+
+            // 点击外部关闭下拉框
+            document.addEventListener('click', (e) => {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                }
+            });
+        });
+
+        // 更新游戏列表显示
+        function updateGameList() {
+            const gameList = document.getElementById('gameList');
+            gameList.innerHTML = '';
+            
+            games.forEach((game, index) => {
+                const gameItem = document.createElement('div');
+                gameItem.className = 'game-item';
+                gameItem.innerHTML = `
+                    <div>时间: ${game.title.Timestamp}</div>
+                    <div>房间号: ${game.title.RoomID}</div>
+                    <div>桌号: ${game.title.TableNO}</div>
+                    <div>玩家: ${Object.values(game.title.Players).join(', ')}</div>
+                `;
+                gameItem.onclick = () => selectGame(index);
+                gameList.appendChild(gameItem);
+            });
+        }
+
+        // 选择游戏
+        function selectGame(index) {
+            currentGameIndex = index;
+            currentGameLogs = games[index].details;
+            initializeGameStates(games[index]);
+            currentStepIndex = 0;
+            previousScores = [0, 0, 0, 0, 0];
+            updateTableDisplay();
+            updatePlayerInfo(games[index].title);
+            updateStateList();
+        }
+
+        // 更新状态列表
+        function updateStateList() {
+            const stateList = document.getElementById('stateList');
+            stateList.innerHTML = '';
+            
+            currentGameLogs.forEach((log, index) => {
+                const stateItem = document.createElement('div');
+                stateItem.className = `state-item ${index === currentStepIndex ? 'active' : ''}`;
+                
+                let description = '';
+                if (log.startsWith('Deal')) {
+                    const [, chairNO] = log.split(' ');
+                    description = `玩家${chairNO}摸牌`;
+                } else if (log.startsWith('Divide')) {
+                    const parts = log.split(' ');
+                    const chairNO = parts[1];
+                    const cards = parts[2];
+                    description = `玩家${chairNO}出牌: ${cards}牌型:${parts[3]}`;
+                }  else if (log.startsWith('DepositDiff')) {
+                    const [, chairNO, diff, base] = log.split(' ');
+                    description = `玩家${chairNO}银两: ${diff > 0 ? "+" : ""}${diff}`;
+                }
+                
+                if (description) {
+                    stateItem.innerHTML = `<div>step ${index + 1}: ${description}</div>`;
+                    stateItem.onclick = () => {
+                        currentStepIndex = index;
+                        updateTableDisplay();
+                        updateStateList();
+                    };
+                    stateList.appendChild(stateItem);
+                }
+            });
+            
+            // 滚动到当前状态
+            const activeItem = stateList.querySelector('.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // 更新玩家信息显示
+        function updatePlayerInfo(gameTitle) {
+            for(let i = 0; i < 5; i++) {
+                const playerInfoElements = document.querySelectorAll(`.player-${i} .player-info`);
+                const player = gameTitle.Players[i];
+                const playerName = gameTitle.PlayerNames[i];
+                if(player) {
+                    // 第一个player-info元素显示昵称和ID
+                    playerInfoElements[0].querySelector('.player-id').textContent = player;
+                    playerInfoElements[0].querySelector('.nickname').textContent = playerName;
+                    // 第二个player-info元素显示座位号和银两变化
+                    playerInfoElements[1].querySelector('.chair-no').textContent = i;
+                }
+            }
+        }
+
+        // 处理日志文件
+        function processLogFile(lines) {
+            let currentGame = [];
+            let gameTitle = {};
+
+            lines.forEach(line => {
+                if (line.startsWith('Version')) {
+                    if (currentGame.length > 0) {
+                        games.push({ title: gameTitle, details: currentGame });
+                        currentGame = [];
+                        gameTitle = {};
+                    }
+                } else if (line.startsWith('Timestamp')) {
+                    gameTitle.Timestamp = timestampToDateTime(line.split(' ')[1]);
+                } else if (line.startsWith('RoomID')) {
+                    gameTitle.RoomID = line.split(' ')[1];
+                } else if (line.startsWith('TableNO')) {
+                    gameTitle.TableNO = line.split(' ')[1];
+                } else if (line.startsWith('ChairNO')) {
+                    const chairDetails = line.split(' ').slice(1);
+                    const chairNO = chairDetails[0];
+                    const playerID = chairDetails[1];
+                    if (!gameTitle.Players) {
+                        gameTitle.Players = {};
+                    }
+                    gameTitle.Players[chairNO] = playerID;
+                } else if (line.startsWith('Name')) {
+                    const nameDetails = line.split(' ').slice(1);
+                    const chairNO = nameDetails[0];
+                    const playerName = nameDetails[1];
+                    if (!gameTitle.PlayerNames) {
+                        gameTitle.PlayerNames = {};
+                    }
+                    gameTitle.PlayerNames[chairNO] = playerName;
+                } else {
+                    line = processLogLinesFlexible(line);
+                    if (line.startsWith('Raw')) {
+                        currentGame.push(line.replace('Raw', ''));
+                    }
+                }
+            });
+
+            if (currentGame.length > 0) {
+                games.push({ title: gameTitle, details: currentGame });
+            }
+        }
+
+        // 搜索游戏
+        function searchGame() {
+            const playerId = document.getElementById('playerIdSearch').value;
+            const roomId = document.getElementById('roomIdSearch').value;
+            const tableNo = document.getElementById('tableNoSearch').value;
+            const startTime = document.getElementById('startTimeSearch').value;
+            const endTime = document.getElementById('endTimeSearch').value;
+
+            const gameList = document.getElementById('gameList');
+            gameList.innerHTML = '';
+            
+            // 如果所有搜索框都为空，显示所有游戏
+            if (!playerId && !roomId && !tableNo && !startTime && !endTime) {
+                updateGameList();
+                return;
+            }
+
+            const firstGameDate = games.length > 0 ? new Date(games[0].title.Timestamp) : new Date();
+            const year = firstGameDate.getFullYear();
+            const month = firstGameDate.getMonth();
+            const day = firstGameDate.getDate();
+
+            const filteredGames = games.filter(game => {
+                const matchPlayerId = !playerId || Object.values(game.title.Players).includes(playerId);
+                const matchRoomId = !roomId || game.title.RoomID === roomId;
+                const matchTableNo = !tableNo || game.title.TableNO === tableNo;
+                
+                let matchTime = true;
+                const gameTime = new Date(game.title.Timestamp);
+                if (startTime) {
+                    const [hours, minutes, seconds] = startTime.split(':');
+                    const startDateTime = new Date(year, month, day, hours, minutes, seconds);
+                    matchTime = matchTime && gameTime >= startDateTime;
+                }
+                if (endTime) {
+                    const [hours, minutes, seconds] = endTime.split(':');
+                    const endDateTime = new Date(year, month, day, hours, minutes, seconds);
+                    matchTime = matchTime && gameTime <= endDateTime;
+                }
+                
+                return matchPlayerId && matchRoomId && matchTableNo && matchTime;
+            });
+            
+            filteredGames.forEach((game, index) => {
+                const gameItem = document.createElement('div');
+                gameItem.className = 'game-item';
+                gameItem.innerHTML = `
+                    <div>时间: ${game.title.Timestamp}</div>
+                    <div>房间号: ${game.title.RoomID}</div>
+                    <div>桌号: ${game.title.TableNO}</div>
+                    <div>玩家: ${Object.values(game.title.Players).join(', ')}</div>
+                `;
+                gameItem.onclick = () => selectGame(games.indexOf(game));
+                gameList.appendChild(gameItem);
+            });
+        }
+
+        // 清除搜索
+        function clearSearch() {
+            document.getElementById('playerIdSearch').value = '';
+            document.getElementById('roomIdSearch').value = '';
+            document.getElementById('tableNoSearch').value = '';
+            document.getElementById('startTimeSearch').value = '';
+            document.getElementById('endTimeSearch').value = '';
+            updateGameList();
+        }
+
+        // 初始化游戏状态
+        function initializeGameStates(game) {
+            gameStates = [];
+            let currentState = {
+                handCards: [[],[],[],[],[]],
+                huCards: [[],[],[],[],[]],
+                throwCards: [[],[],[],[],[]],
+                scores: [0,0,0,0,0],
+                special: [0,0,0,0,0],
+                cardType: [[],[],[],[],[]],
+                depositdiff: [0,0,0,0,0],
+            };
+
+            game.details.forEach((logLine,index) => {
+                let newState = JSON.parse(JSON.stringify(currentState));
+                
+                if (logLine.startsWith('Deal')) {
+                    const [, chairNO, ...cards] = logLine.split(' ');
+                    newState.handCards[Number(chairNO)] = cards[0] && cards[0].split(',');
+                } else if (logLine.startsWith('Divide')) {
+                    // 解析 RawDivide 日志
+                    const parts = logLine.split(' ');
+                    const chairNO = parts[1];
+                    const cardIds = parts[2];
+                    const chair = Number(chairNO);
+                    const cards = cardIds.split(',');
+
+                    let types = parts[3].split(',');
+                    newState.cardType[chair] = [...types]
+                    
+                    // 将出牌加入到出牌区
+                    newState.throwCards[chair] = [...newState.throwCards[chair], ...cards];
+                    
+                    // 从手牌中移除出的牌
+                    newState.handCards[chair] = newState.handCards[chair].filter(
+                        card => !cards.includes(card)
+                    );
+                } else if (logLine.startsWith('Hu')) {
+                    const [, chairNO, cardid, hutype] = logLine.split(' ');
+                    newState.huCards[chairNO].push(cardid)
+                    newState.handCards[chairNO] = newState.handCards[chairNO].filter(
+                        card => card != cardid
+                    );
+                }  else if (logLine.startsWith('ChangeOver')) {
+                    const [, chairNO, ...cards] = logLine.split(' ');
+                    newState.handCards[Number(chairNO)] = cards[0] && cards[0].split(',');
+                }  else if (logLine.startsWith('DepositDiff')) {
+                    const [, chairNO, diff, base] = logLine.split(' ');
+                    newState.depositdiff[Number(chairNO)] = Number(diff);
+                }  else if (logLine.startsWith('Giveup')) {
+
+                }  
+
+                currentState = newState;
+                gameStates.push(JSON.parse(JSON.stringify(newState)));
+            });
+        }
+
+
+        // 更新牌桌显示
+        function updateTableDisplay() {
+            if (currentStepIndex < 0 || !gameStates[currentStepIndex]) return;
+
+            const state = gameStates[currentStepIndex];
+            
+            for (let i = 0; i < 5; i++) {
+                const handCardsDiv = document.querySelector(`.player-${i} .hand-cards`);
+                const throwCardsDiv = document.querySelector(`.player-${i} .throw-cards`);
+                const scoreChangeSpan = document.querySelector(`.player-${i} .score-change`);
+                // const cardtype = document.querySelector(`.player-${i} .player-info.cardtype`);
+                const depositChangeSpans = document.querySelectorAll(`.player-${i} .deposit-change`);
+                const cardtypes = document.querySelectorAll(`.player-${i} .cardtype`);
+                
+                handCardsDiv.innerHTML = '手牌区: ' + generateCardImages(state.handCards[i],[]);
+                // 更新出牌区的HTML
+                throwCardsDiv.innerHTML = '出牌区: ' + generateCardImages(state.throwCards[i],[],false); // 使用 span 添加右边距
+
+
+
+                const str = state.cardType[i].map((num)=>{
+                    return cardTypeMap[num]
+                }).join(',');
+                cardtypes[0].textContent = str
+
+                // 更新银两变化显示 - 选择第二个deposit-change元素（对应第二个player-info div）
+                if (state.depositdiff[i] !== 0) {
+                    depositChangeSpans[0].textContent = `银两: ${state.depositdiff[i] > 0 ? '+' : ''}${state.depositdiff[i]}`;
+                } else {
+                    depositChangeSpans[0].textContent = '';
+                }
+            }
+            previousScores = [...state.scores];
+            updateStateList();
+        }
+
+        // 上一步
+        function prevStep() {
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                updateTableDisplay();
+            }
+        }
+
+        // 下一步
+        function nextStep() {
+            if (currentStepIndex < gameStates.length - 1) {
+                currentStepIndex++;
+                updateTableDisplay();
+            }
+        }
+        // // 生成卡牌图片HTML
+        // function generateCardImages(cardIds, flaggedCardIds) {
+        //     if (!cardIds || cardIds.length === 0) {
+        //         return '<p></p>'; // 当 cardIds 为空时返回提示信息
+        //     }
+        //     return cardIds.map(cardId => {
+        //         const isFlagged = flaggedCardIds.includes(cardId); // 检查当前卡牌是否需要添加 mingflag
+        //         cardId = Number(cardId) % 54 + "";
+        //         const paddedId = cardId.padStart(2, '0');
+        //         return `<img src="skin/card_${paddedId}.png" alt="${paddedId}">`;
+        //     }).join('');
+        // }
+        // 生成卡牌图片HTML
+        function generateCardImages(cardIds, flaggedCardIds,isGary) {
+            if (!cardIds || cardIds.length === 0) {
+                return '<p></p>'; // 当 cardIds 为空时返回提示信息
+            }
+            return cardIds.map(cardId => {
+                const isFlagged = flaggedCardIds.includes(cardId); // 检查当前卡牌是否明牌
+                cardId = Number(cardId) % 54 + "";
+                const paddedId = cardId.padStart(2, '0');
+                let colorStr = ``
+                if(isGary){
+                    if(isFlagged){
+                        colorStr = `<div style="position: absolute; top: 0; left: 0; width: 50px; height: 68px; background-color: rgba(109, 109, 73, 0.7); "></div>`
+                    }else{
+                        colorStr = `<div style="position: absolute; top: 0; left: 0; width: 50px; height: 68px; background-color: rgba(80, 80, 80, 0.7); "></div>`
+                    }
+                }else{
+                    if(isFlagged){
+                        colorStr = `<div style="position: absolute; top: 0; left: 0; width: 50px; height: 68px; background-color: rgba(255, 255, 0, 0.1); "></div>`
+                    }
+                }
+                return `
+                    <div style="position: relative; display: inline-block; margin-right:-28px; margin-top:-10px ; margin-bottom:-10px;"> <!-- 只设置右侧间距 -->
+                        <img src="skin/card_${paddedId}.png" alt="${paddedId}" style="width: 50px; height: 68px;"> <!-- 设置卡牌大小 -->
+                        ${colorStr} <!-- 添加颜色层 -->
+                    </div>
+                `;
+            }).join('');
+        }
+
+
+        // 时间戳转换为日期时间字符串
+        function timestampToDateTime(timestamp) {
+            const date = new Date(timestamp * 1000);
+            const pad = num => String(num).padStart(2, '0');
+            
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+                   `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        }
+    </script>
+</body>
+
+</html>
+
+
+
