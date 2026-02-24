@@ -8,6 +8,7 @@ import FkazPlayer from '@/views/FkazPlayer.vue';
 import JawbPlayer from '@/views/JawbPlayer.vue';
 import JawwPlayer from '@/views/JawwPlayer.vue';
 import LybjPlayer from '@/views/LybjPlayer.vue';
+import GsssPlayer from '@/views/GsssPlayer.vue';
 import DepositTool from '@/views/DepositTool.vue';
 import CPTool from '@/views/CPTool.vue';
 
@@ -52,6 +53,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/LybjPlayer',
         name: 'LybjPlayer',
         component: LybjPlayer
+    },
+    {
+        path: '/GsssPlayer',
+        name: 'GsssPlayer',
+        component: GsssPlayer
     },
     {
         path: '/DepositTool',
