@@ -39,6 +39,7 @@ export default class HomePage extends Vue {
         { name: '罗松复盘', path: '/GsssPlayer' },
         { name: '银两工具', path: '/DepositTool' },
         { name: 'CP服工具', path: '/CPTool' },
+        { name: 'JSON转Excel', path: '/JsonToExcelTool' },
         // { name: '数据统计', path: '/statistics' },
         // { name: '系统设置', path: '/settings' }
     ];

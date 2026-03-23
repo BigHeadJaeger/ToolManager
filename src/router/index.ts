@@ -11,6 +11,7 @@ import LybjPlayer from '@/views/LybjPlayer.vue';
 import GsssPlayer from '@/views/GsssPlayer.vue';
 import DepositTool from '@/views/DepositTool.vue';
 import CPTool from '@/views/CPTool.vue';
+import JsonToExcelTool from '@/views/JsonToExcelTool.vue';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -68,6 +69,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/CPTool',
         name: 'CPTool',
         component: CPTool
+    },
+    {
+        path: '/JsonToExcelTool',
+        name: 'JsonToExcelTool',
+        component: JsonToExcelTool
     }
 ]
 
