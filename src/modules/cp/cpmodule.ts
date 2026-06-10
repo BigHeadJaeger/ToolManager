@@ -6,7 +6,7 @@ import { pbdecl } from '@/decorators/protobufdecl';
 import { PBStruct } from '@/define/pbstruct';
 import { aesjs } from '@/libs/crypt';
 import { CommonInfo } from '@/define/Info';
-import { ClientInfo, ClientInfo_Debug, Config } from '@/config/config';
+import { getActiveClientInfo } from '@/config/config';
 import CommonFunc from '@/utils/commonfunc';
 
 @pbdecl("CPPB.Request")
@@ -40,6 +40,12 @@ class CPModule {
         httpRequestPB.clearHost()
     }
 
+    syncClientInfo() {
+        const clientInfo = getActiveClientInfo()
+        CommonInfo.setClientInfo(clientInfo)
+        Protobuf.setClientInfo(clientInfo)
+    }
+
     wait_initialize() {
         return new Promise<boolean>((resolve, reject) => {
             this.initialize((res) => {
@@ -51,14 +57,9 @@ class CPModule {
     }
 
     initialize(callback?:Function) {
-        if (!httpRequestPB.isHostInfoGet()) {
-            if (Config.serverMode == 2) {
-                CommonInfo.setClientInfo(ClientInfo_Debug)
-            } else {
-                CommonInfo.setClientInfo(ClientInfo)
-            }
-            Protobuf.setClientInfo(CommonInfo.info)
+        this.syncClientInfo()
 
+        if (!httpRequestPB.isHostInfoGet()) {
             let url = `http://192.168.1.26/api/mod(logon)/get_server`
             let data = Protobuf.Serialize(new HallPB.GetServerReq)
 
@@ -75,6 +76,8 @@ class CPModule {
                     callback?.(false)
                 }
             })
+        } else {
+            callback?.(true)
         }
     }
 
@@ -101,6 +104,7 @@ class CPModule {
     }
 
     client_request(szModuleName:string, callback: any, extendParam:any, nMsgID:number = 0) {
+        this.syncClientInfo()
         let sendData = new GameClientReq
         
         sendData.req = {id:nMsgID, data: new BinaryStream(aesjs.utils.utf8.toBytes(JSON.stringify(extendParam)).buffer)}

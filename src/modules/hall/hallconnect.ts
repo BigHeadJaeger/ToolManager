@@ -70,8 +70,7 @@ export default class HallConnect {
         }
 
         const params = {
-            // userid: clientInfo.userid,
-            userid: -1,
+            userid: clientInfo.userid,
             hallsvrid:0,
             agentgroupid: 6,
             ipaddr:0,
@@ -89,7 +88,7 @@ export default class HallConnect {
             hallbuildno: 20130822,
             hallnetdelay: 323,
             hallruncount: 0,
-            gameid: 450,
+            gameid: clientInfo.gameid,
             gamever:  clientInfo.gameversion,
             accesstoken: "",
             recommenderid: "",

@@ -39,7 +39,7 @@ export const ClientInfo = {
 
 export const ClientInfo_Debug = {
     appcode : 'lybw',
-    userid : 1030263,
+    userid : 1030252,
     username : "wuctest012",
     nickname : "wuctest012",
     hardid : "50A4C8bf98020000000000000000000",
@@ -54,4 +54,50 @@ export const ClientInfo_Debug = {
     // templateversion: '20241101',
     password:"123456"
     
+}
+
+export interface ClientConfigInput {
+    appcode: string
+    gameid: number
+    userid: number
+    username: string
+    password: string
+}
+
+export type ClientConfigMode = 'test' | 'production'
+
+export function applyClientConfig(mode: ClientConfigMode, config: ClientConfigInput) {
+    const target = mode === 'test' ? ClientInfo_Debug : ClientInfo
+    target.appcode = config.appcode
+    target.gameid = config.gameid
+    target.userid = config.userid
+    target.username = config.username
+    target.nickname = config.username
+    target.password = config.password
+}
+
+const CPTOOL_CLIENT_CONFIG_KEY = 'cptool_client_config'
+
+export function saveClientConfig(mode: ClientConfigMode, config: ClientConfigInput) {
+    const allConfigs = JSON.parse(localStorage.getItem(CPTOOL_CLIENT_CONFIG_KEY) || '{}')
+    allConfigs[mode] = config
+    localStorage.setItem(CPTOOL_CLIENT_CONFIG_KEY, JSON.stringify(allConfigs))
+}
+
+export function loadClientConfig(mode: ClientConfigMode): ClientConfigInput | null {
+    const allConfigs = JSON.parse(localStorage.getItem(CPTOOL_CLIENT_CONFIG_KEY) || '{}')
+    return allConfigs[mode] || null
+}
+
+export function getClientConfigMode(): ClientConfigMode {
+    return Config.serverMode === 2 ? 'test' : 'production'
+}
+
+export function getActiveClientInfo() {
+    const mode = getClientConfigMode()
+    const cached = loadClientConfig(mode)
+    if (cached) {
+        applyClientConfig(mode, cached)
+    }
+    return mode === 'test' ? ClientInfo_Debug : ClientInfo
 }
