@@ -1,6 +1,6 @@
 <template>
     <div>
-        <top-toolbar />
+        <top-toolbar :special-back-action="showConfigForm ? undefined : handleReconfig" />
         <div v-if="showConfigForm" class="config-container">
             <h1>CP服工具配置</h1>
             <div class="config-form">
@@ -46,7 +46,6 @@
                 <button @click="handleSubmit">查询</button>
                 <button @click="handleWrite">修改</button>
                 <button @click="handleClear">清空</button>
-                <button @click="handleReconfig">重新配置</button>
             </div>
             <textarea v-if="showContent" v-model="content" class="content-textarea"></textarea>
         </div>
