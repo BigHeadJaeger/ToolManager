@@ -2,7 +2,6 @@
   <div class="home-container">
     <header class="header">
       <h1>主页</h1>
-      <button @click="handleLogout" class="logout-btn">退出登录</button>
     </header>
     <div class="content">
       <h2>功能</h2>
@@ -24,12 +23,8 @@
 
 <script lang="ts">
 import { Vue } from 'vue-class-component';
-import { useUserStore } from '@/stores/user';
-
 
 export default class HomePage extends Vue {
-    private userStore = useUserStore();
-
     private features = [
         { name: 'creator多开工具', path: '/CreatorMulti' },
         { name: '暗炸复盘', path: '/FkazPlayer' },
@@ -43,15 +38,6 @@ export default class HomePage extends Vue {
         // { name: '数据统计', path: '/statistics' },
         // { name: '系统设置', path: '/settings' }
     ];
-
-    get username() {
-        return this.userStore.username;
-    }
-
-    handleLogout() {
-        this.userStore.logout();
-        this.$router.push('/');
-    }
 
     navigateTo(path: string) {
         this.$router.push(path);
@@ -81,15 +67,6 @@ export default class HomePage extends Vue {
   padding: 20px;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.logout-btn {
-  padding: 8px 16px;
-  background-color: #f56c6c;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
 .content {

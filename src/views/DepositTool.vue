@@ -32,7 +32,7 @@ export default {
     });
 
     const onToolBack = () => {
-      router.push("/HomePage")
+      router.push("/")
     }
 
     return {

@@ -4,15 +4,11 @@
             <button class="toolbar-btn" @click="handleBack">返回</button>
             <button class="toolbar-btn" @click="goHome">返回首页</button>
         </div>
-        <div class="right">
-            <button class="toolbar-btn" @click="logout">退出登录</button>
-        </div>
     </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, toRefs } from 'vue';
-import { useUserStore } from '@/stores/user';
 import { useRouter } from 'vue-router';
 
 export default defineComponent({
@@ -23,7 +19,6 @@ export default defineComponent({
     },
   },
   setup(props) {
-    const userStore = useUserStore();
     const { specialBackAction } = toRefs(props);
     const router = useRouter();
 
@@ -36,18 +31,12 @@ export default defineComponent({
     };
 
     const goHome = () => {
-      router.push('/HomePage');
-    };
-
-    const logout = () => {
-      userStore.logout();
       router.push('/');
     };
 
     return {
       handleBack,
       goHome,
-      logout,
     };
   },
 });
