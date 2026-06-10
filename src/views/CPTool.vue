@@ -39,12 +39,9 @@
         <div v-else>
             <h1>CP服数据查询</h1>
             <div class="input-group">
-                <select v-model="selectedMode" @change="handleModeChange">
-                    <option value="test">测试</option>
-                    <option value="production">正式</option>
-                </select>
+                <span class="info-text">环境：{{ displayEnvironment }}</span>
+                <span class="info-text">游戏缩写：{{ displayAppcode }}</span>
                 <input type="text" placeholder="模块名" v-model="moduleName" />
-                <input type="text" placeholder="游戏缩写" v-model="gameAbbreviation" />
                 <input type="text" placeholder="用户id" v-model="userId" />
                 <button @click="handleSubmit">查询</button>
                 <button @click="handleWrite">修改</button>
@@ -58,7 +55,7 @@
 
 <script>
 import cpmodule from '@/modules/cp/cpmodule';
-import { onBeforeMount, ref } from 'vue';
+import { computed, onBeforeMount, ref } from 'vue';
 import TopToolbar from '@/components/TopToolbar.vue';
 import { Config, applyClientConfig, loadClientConfig, saveClientConfig } from '@/config/config';
 import { ServerMode } from '@/define/define';
@@ -78,7 +75,6 @@ export default {
     },
     setup() {
         const moduleName = ref('');
-        const gameAbbreviation = ref('');
         const userId = ref('');
         const showContent = ref(false);
         const content = ref('');
@@ -87,6 +83,13 @@ export default {
         const connecting = ref(false);
         const configMode = ref('production');
         const configForm = ref(emptyConfigForm());
+
+        const displayEnvironment = computed(() => selectedMode.value === 'test' ? '测试' : '正式');
+
+        const displayAppcode = computed(() => {
+            const cached = loadClientConfig(selectedMode.value);
+            return cached?.appcode || '';
+        });
 
         const loadConfigForMode = () => {
             const cached = loadClientConfig(configMode.value);
@@ -182,6 +185,7 @@ export default {
             connecting.value = false;
 
             if (success) {
+                localStorage.setItem('cptool_cache_selectedMode', configMode.value);
                 showConfigForm.value = false;
             } else {
                 alert('连接失败，请检查配置信息后重试');
@@ -190,11 +194,9 @@ export default {
 
         const handleSubmit = () => {
             localStorage.setItem('cptool_cache_moduleName', moduleName.value);
-            localStorage.setItem('cptool_cache_gameAbbreviation', gameAbbreviation.value);
             localStorage.setItem('cptool_cache_userId', userId.value);
-            localStorage.setItem('cptool_cache_selectedMode', selectedMode.value);
 
-            cpmodule.reqCP("reqtest", {ope:"info", uid: Number(userId.value), modulename: moduleName.value, gamecode:gameAbbreviation.value }, (isOK, data) => {
+            cpmodule.reqCP("reqtest", {ope:"info", uid: Number(userId.value), modulename: moduleName.value, gamecode: displayAppcode.value }, (isOK, data) => {
                 content.value = ""
                 content.value += JSON.stringify(data.player, null, 2)
                 showContent.value = true;
@@ -234,24 +236,6 @@ export default {
             }, moduleName.value)
         }
 
-        const handleModeChange = async () => {
-            const cached = loadClientConfig(selectedMode.value);
-            if (!cached) {
-                alert('当前环境尚未配置，请先填写配置信息');
-                configMode.value = selectedMode.value;
-                loadConfigForMode();
-                showConfigForm.value = true;
-                return;
-            }
-
-            const success = await initializeWithMode(selectedMode.value);
-            if (success) {
-                alert(selectedMode.value === 'test' ? '切换测试环境成功' : '切换正式环境成功');
-            } else {
-                alert(selectedMode.value === 'test' ? '切换测试环境失败' : '切换正式环境失败');
-            }
-        };
-
         const handleReconfig = () => {
             configMode.value = selectedMode.value;
             loadConfigForMode();
@@ -260,7 +244,6 @@ export default {
 
         onBeforeMount(() => {
             moduleName.value = localStorage.getItem('cptool_cache_moduleName') || '';
-            gameAbbreviation.value = localStorage.getItem('cptool_cache_gameAbbreviation') || '';
             userId.value = localStorage.getItem('cptool_cache_userId') || '';
             selectedMode.value = localStorage.getItem('cptool_cache_selectedMode') || 'production';
             configMode.value = selectedMode.value;
@@ -269,15 +252,14 @@ export default {
 
         return {
             moduleName,
-            gameAbbreviation,
             userId,
             showContent,
             content,
             handleSubmit,
             handleWrite,
             handleClear,
-            selectedMode,
-            handleModeChange,
+            displayEnvironment,
+            displayAppcode,
             showConfigForm,
             connecting,
             configMode,
@@ -316,9 +298,19 @@ export default {
 
 .input-group {
     display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
     padding-left: 50px;
     padding-top: 10px;
+}
+
+.info-text {
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #606266;
+    background-color: #f5f7fa;
+    border-radius: 4px;
 }
 
 button {
