@@ -1131,12 +1131,52 @@ export class JSONToExcelConverter {
     }
 
     /**
+     * 从 config key 解析出 JSON 中的取值路径
+     */
+    private getConfigValuePath(configKey: string): string | null {
+        if (this.isEndWithSheetTag(configKey)) {
+            return this.extractPrefixStrict(configKey);
+        }
+
+        let path = configKey;
+        if (this.isEndWithTypeTag(path)) {
+            path = this.extractTypePrefixStrict(path) || path;
+        }
+        if (path.endsWith('[]')) {
+            path = path.slice(0, -2);
+        }
+        return path;
+    }
+
+    /**
+     * 将 JSON 值序列化为 config 单元格字符串
+     */
+    private serializeConfigValue(value: any): any {
+        if (value === undefined || value === null) {
+            return undefined;
+        }
+        if (Array.isArray(value)) {
+            return this.serializeArray(value);
+        }
+        return String(value);
+    }
+
+    private isEndWithTypeTag(str: string): boolean {
+        return /@\([^)]*\)$/.test(str);
+    }
+
+    private extractTypePrefixStrict(str: string): string | null {
+        const match = str.match(/^([^@]*)@\(/);
+        return match ? match[1] : null;
+    }
+
+    /**
      * 构建 config 工作表数据
      */
     private buildConfigSheet(jsonData: any): any[][] {
         const rows: any[][] = [['key', 'value']];
 
-        // 从 __sheet_schemas__.configData 恢复 config 数据
+        // 使用 configData 保留 key 结构与顺序，值从 JSON 最外层读取
         const schemas = jsonData.__sheet_schemas__ || {};
         const configData = schemas.configData || [];
         
@@ -1155,13 +1195,18 @@ export class JSONToExcelConverter {
                 if (this.isEndWithSheetTag(item.key)) {
                     const refSheetName = this.extractSheetTagContent(item.key);
                     if (!topLevelSheets.has(refSheetName)) {
-                        // 跳过嵌套工作表的引用
                         continue;
                     }
+                    rows.push([item.key]);
+                    continue;
                 }
-                
-                if (item.value !== undefined) {
-                    rows.push([item.key, item.value]);
+
+                const path = this.getConfigValuePath(item.key);
+                const rawValue = path ? this.getNestedValue(jsonData, path) : undefined;
+                const serialized = this.serializeConfigValue(rawValue);
+
+                if (serialized !== undefined) {
+                    rows.push([item.key, serialized]);
                 } else {
                     rows.push([item.key]);
                 }
