@@ -267,13 +267,29 @@ class FlexibleExcelToJSONConverter {
     }
 
     /**
+     * 解析字段路径，支持 test[]@(string) 等组合写法
+     */
+    private parseFieldPath(path: string): { fieldPath: string; isArray: boolean; type: string | null } {
+        let remaining = path;
+        let type: string | null = null;
+
+        if (this.isEndWithTypeTag(remaining)) {
+            type = this.extractTypeTagContent(remaining);
+            remaining = this.extractTypePrefixStrict(remaining) || remaining;
+        }
+
+        const isArray = remaining.endsWith('[]');
+        const fieldPath = isArray ? remaining.slice(0, -2) : remaining;
+
+        return { fieldPath, isArray, type };
+    }
+
+    /**
      * 设置嵌套值
      */
     private setNestedValue(obj: any, path: string, value: any): void {
-        // 检查是否是数组字段
-        const isArray = path.endsWith('[]');
-        const cleanPath = isArray ? path.slice(0, -2) : path;
-        const pathParts = cleanPath.split('.');
+        const { fieldPath, isArray, type } = this.parseFieldPath(path);
+        const pathParts = fieldPath.split('.');
 
         let current = obj;
 
@@ -286,18 +302,12 @@ class FlexibleExcelToJSONConverter {
             current = current[key];
         }
 
-        let finalKey = pathParts[pathParts.length - 1];
+        const finalKey = pathParts[pathParts.length - 1];
 
         // 对于@sheet 引用，直接设置值，不进行数组处理
         if (Array.isArray(value)) {
             current[finalKey] = value;
             return;
-        }
-
-        let type = null
-        if (this.isEndWithTypeTag(path)) {
-            finalKey = this.extractTypePrefixStrict(path);
-            type = this.extractTypeTagContent(path);
         }
 
         const processedValue = this.processValue(value, isArray, type);
@@ -346,9 +356,7 @@ class FlexibleExcelToJSONConverter {
         }
 
         const stringValue = String(value).trim();
-        if (type == "string") {
-            return stringValue;
-        }
+        const forceString = type === 'string';
 
         if (isArray) {
             return stringValue.split(this.options.arraySeparator)
@@ -357,10 +365,17 @@ class FlexibleExcelToJSONConverter {
                 .map(v => {
                     // 检查是否是嵌套数组（用;分隔的二级数组）
                     if (v.includes(';')) {
-                        return v.split(';').map(subV => this.inferType(subV.trim()));
+                        return v.split(';').map(subV => {
+                            const trimmed = subV.trim();
+                            return forceString ? trimmed : this.inferType(trimmed);
+                        });
                     }
-                    return this.inferType(v);
+                    return forceString ? v : this.inferType(v);
                 });
+        }
+
+        if (forceString) {
+            return stringValue;
         }
 
         return this.inferType(stringValue);
@@ -1060,7 +1075,7 @@ export class JSONToExcelConverter {
                 }
 
                 // 检查是否有 @(string) 类型标记
-                const hasStringTag = /@\([^)]*\)$/.test(header);
+                const hasStringTag = /@\(string\)$/.test(header);
 
                 // 从嵌套的记录中获取值（去除类型标记和数组标记）
                 const cleanHeader = this.removeTypeTag(header).replace(/\[\]$/g, '');
@@ -1068,7 +1083,7 @@ export class JSONToExcelConverter {
                 if (value === undefined || value === null) {
                     row.push(null);
                 } else if (Array.isArray(value)) {
-                    row.push(this.serializeArray(value));
+                    row.push(this.serializeArray(value, hasStringTag));
                 } else if (hasStringTag) {
                     // 有 @(string) 标记，强制转为字符串
                     row.push(String(value));
@@ -1116,18 +1131,23 @@ export class JSONToExcelConverter {
 
     /**
      * 序列化数组为字符串
+     * @param forceStringElements 为 true 时（@(string) 数组），每个元素强制转为字符串
      */
-    private serializeArray(arr: any[]): string {
+    private serializeArray(arr: any[], forceStringElements: boolean = false): string {
         if (arr.length === 0) {
             return '';
         }
 
+        const formatElement = (item: any) => forceStringElements ? String(item) : String(item);
+
         // 检查是否是二维数组
         if (arr.every(item => Array.isArray(item))) {
-            return arr.map(subArr => subArr.join(this.options.array2DSeparator)).join(this.options.arraySeparator);
+            return arr.map(subArr =>
+                subArr.map(item => formatElement(item)).join(this.options.array2DSeparator)
+            ).join(this.options.arraySeparator);
         }
 
-        return arr.map(item => String(item)).join(this.options.arraySeparator);
+        return arr.map(item => formatElement(item)).join(this.options.arraySeparator);
     }
 
     /**
@@ -1151,12 +1171,16 @@ export class JSONToExcelConverter {
     /**
      * 将 JSON 值序列化为 config 单元格字符串
      */
-    private serializeConfigValue(value: any): any {
+    private serializeConfigValue(value: any, configKey?: string): any {
         if (value === undefined || value === null) {
             return undefined;
         }
+        const hasStringTag = configKey ? /@\(string\)$/.test(configKey) : false;
         if (Array.isArray(value)) {
-            return this.serializeArray(value);
+            return this.serializeArray(value, hasStringTag);
+        }
+        if (hasStringTag) {
+            return String(value);
         }
         return String(value);
     }
@@ -1203,7 +1227,7 @@ export class JSONToExcelConverter {
 
                 const path = this.getConfigValuePath(item.key);
                 const rawValue = path ? this.getNestedValue(jsonData, path) : undefined;
-                const serialized = this.serializeConfigValue(rawValue);
+                const serialized = this.serializeConfigValue(rawValue, item.key);
 
                 if (serialized !== undefined) {
                     rows.push([item.key, serialized]);

@@ -10,6 +10,7 @@ import GsssPlayer from '@/views/GsssPlayer.vue';
 import DepositTool from '@/views/DepositTool.vue';
 import CPTool from '@/views/CPTool.vue';
 import JsonToExcelTool from '@/views/JsonToExcelTool.vue';
+import ServiceDeploy from '@/views/ServiceDeploy.vue';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -70,6 +71,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/JsonToExcelTool',
         name: 'JsonToExcelTool',
         component: JsonToExcelTool
+    },
+    {
+        path: '/ServiceDeploy',
+        name: 'ServiceDeploy',
+        component: ServiceDeploy
     }
 ]
 
