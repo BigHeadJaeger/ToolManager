@@ -54,3 +54,20 @@ export async function reloadServiceConfig(): Promise<ProjectRuntimeState[]> {
   const res = await request.post('/services/reload-config')
   return res.data?.data || []
 }
+
+export async function uploadServiceFiles(
+  projectId: string,
+  serviceId: string,
+  files: File[]
+): Promise<{ deployDir: string; files: string[] }> {
+  const form = new FormData()
+  form.append('projectId', projectId)
+  form.append('serviceId', serviceId)
+  for (const file of files) {
+    form.append('files', file)
+  }
+  const res = await request.post('/services/upload', form, {
+    timeout: 600000,
+  })
+  return res.data?.data
+}
