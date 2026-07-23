@@ -46,7 +46,7 @@ export default class HomePage extends Vue {
         { name: '五星牌复盘', path: '/JawwPlayer' },
         { name: '比鸡复盘', path: '/LybjPlayer' },
         { name: '罗松复盘', path: '/GsssPlayer' },
-        { name: '银两工具', path: '/DepositTool' },
+        { name: '测试中心', path: 'http://192.168.105.62:5003/' },
         { name: 'CP服工具', path: '/CPTool' },
         { name: 'JSON转Excel', path: '/JsonToExcelTool' },
     ];
