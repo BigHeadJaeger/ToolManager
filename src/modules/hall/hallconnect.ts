@@ -229,6 +229,7 @@ export default class HallConnect {
 
     private onHallConnectError() {
         console.log("LogTag.Login","hallConnectFailed")
+        this?.okcb?.(false)
     }
 
 

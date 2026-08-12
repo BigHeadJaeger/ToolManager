@@ -32,6 +32,36 @@ export namespace TCNet {
 		Compress = 1 << 1,
 	}
 }
+
+/** AES 解密后可能带填充；尝试剥离后再 inflate */
+function inflateAfterCrypt(data: Uint8Array, wasCrypt: boolean): Uint8Array {
+	const attempts: Uint8Array[] = [data]
+	if (wasCrypt && data.byteLength > 0) {
+		try {
+			attempts.push(aesjs.padding.pkcs7.strip(data))
+		} catch {
+			/* ignore */
+		}
+		// 服务端填充不一定是标准 PKCS7；尝试去掉 1..16 字节尾部
+		const maxTrim = Math.min(16, data.byteLength - 2)
+		for (let n = 1; n <= maxTrim; n++) {
+			attempts.push(data.subarray(0, data.byteLength - n))
+		}
+	}
+	let lastErr: any = new Error('inflate failed')
+	for (const buf of attempts) {
+		try {
+			const out = pako.inflate(buf)
+			if (out && out.byteLength >= 0) {
+				return out
+			}
+		} catch (e) {
+			lastErr = e
+		}
+	}
+	throw lastErr
+}
+
 export class TCNetMod {
 
 	// 自增因子
@@ -424,10 +454,11 @@ export class TCConnect extends BaseNetwork{
 		}
 
 		sentData = TCNetMod.MergeArrayBuff(new Uint8Array(headBuff), sentData)
-		const dataView = new DataView(sentData.buffer);
+		const dataView = new DataView(sentData.buffer, sentData.byteOffset, sentData.byteLength);
 
 		dataView.setUint32(2, CRC32.buf(sentData), TCNet.EN_LITTLE_ENDIAN);
-		this.ws.send(sentData.buffer)
+		// 发 Uint8Array 本体，避免 Node 下 .buffer 带额外 offset/长度
+		this.ws.send(sentData)
 	}
 	/**
 	 * 清除套接字数据
@@ -486,35 +517,49 @@ export class TCConnect extends BaseNetwork{
 
 		this.ws.onmessage = (event: MessageEvent) => {
 			this.lastActiveTime = new Date().getTime()
-			let recvData = event.data
-
-			if (recvData.byteLength <= TCNet.PACK_HEAD_SIZE) {
-				console.log("LogTag.Socket",`${this.tagPrefix()} onmessage byteLength[${recvData.byteLength}] <= PACK_HEAD_SIZE`);
+			// 统一成独立 ArrayBuffer（兼容浏览器 ArrayBuffer / Node Buffer / TypedArray）
+			const raw = event.data
+			let packet: ArrayBuffer
+			if (raw instanceof ArrayBuffer) {
+				packet = raw
+			} else if (ArrayBuffer.isView(raw)) {
+				const v = raw as ArrayBufferView
+				packet = v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)
+			} else {
+				console.log("LogTag.Socket",`${this.tagPrefix()} onmessage unsupported data type`);
 				return
 			}
 
-			let offset = 0, dataView = new DataView(recvData);
+			if (packet.byteLength <= TCNet.PACK_HEAD_SIZE) {
+				console.log("LogTag.Socket",`${this.tagPrefix()} onmessage byteLength[${packet.byteLength}] <= PACK_HEAD_SIZE`);
+				return
+			}
+
+			let offset = 0, dataView = new DataView(packet);
 			let hVer = dataView.getUint16(offset, TCNet.EN_LITTLE_ENDIAN ); offset += 2;
 			let hCrc = dataView.getUint32(offset, TCNet.EN_LITTLE_ENDIAN ); offset += 4;
 			let hLen = dataView.getUint32(offset, TCNet.EN_LITTLE_ENDIAN ); offset += 4;
 			let hFag = dataView.getUint32(offset, TCNet.EN_LITTLE_ENDIAN ); offset += 4;
 
-			recvData = recvData.slice(offset)
-			recvData = new Uint8Array(recvData)
-			if (hFag & TCNet.EPackFlag.Crypt) recvData = this.aesCtr.decrypt(recvData)
-
-			if (hFag & TCNet.EPackFlag.Compress) {
-				recvData = pako.inflate(recvData)
+			let recvData = new Uint8Array(packet.slice(offset))
+			if (hFag & TCNet.EPackFlag.Crypt) {
+				recvData = this.aesCtr.decrypt(recvData)
 			}
 
-			// head{"ReqID":0,"Echo":0,"SesID":0,"MsgType":0"}
-			const head = TCNetMod.DeStruct("MSG_HEADER", recvData.buffer)
-			const body = recvData.slice(TCNet.PROT_HEAD_SIZE)
+			if (hFag & TCNet.EPackFlag.Compress) {
+				recvData = inflateAfterCrypt(recvData, !!(hFag & TCNet.EPackFlag.Crypt))
+			}
+
+			// 必须按 view 的 byteOffset/length 截取，避免 TypedArray 共享底层 buffer 错位
+			const payload = recvData.buffer.slice(recvData.byteOffset, recvData.byteOffset + recvData.byteLength)
+			const head = TCNetMod.DeStruct("MSG_HEADER", payload)
+			const body = new Uint8Array(payload).slice(TCNet.PROT_HEAD_SIZE)
+			const bodyBuf = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength)
 			
 			if (head.MsgType == 1) {
-				this.handleMessage(head.ReqID, body.buffer)
+				this.handleMessage(head.ReqID, bodyBuf)
 			} else {
-				this.handleResponse(head.ReqID, head, body.buffer)
+				this.handleResponse(head.ReqID, head, bodyBuf)
 			}
 		}
 

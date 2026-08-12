@@ -15,7 +15,7 @@ interface ConvertOptions {
  * 灵活的 Excel 到 JSON 转换器
  * 支持多工作表的复杂 JSON 结构生成
  */
-class FlexibleExcelToJSONConverter {
+export class FlexibleExcelToJSONConverter {
     private options: Required<ConvertOptions>;
 
     constructor(options: ConvertOptions = {}) {
@@ -1248,9 +1248,21 @@ export class JSONToExcelConverter {
     }
 }
 
-// ==================== 命令行入口（仅在 Node.js 环境下执行）====================
+// ==================== 命令行入口（仅直接运行本源文件时执行；勿在 bundle 中触发）====================
 
-if (typeof window === 'undefined') {
+function __isJsonToExcelMainModule(): boolean {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        if (typeof require === 'undefined' || require.main !== module) return false
+        const mainPath = String(require.main?.filename || '').replace(/\\/g, '/')
+        // 只认直接跑 jsontoexcel.ts/.js；json-xlsx.cjs 等 bundle 不算
+        return /jsontoexcel\.(ts|js|cjs|mjs)$/i.test(mainPath)
+    } catch {
+        return false
+    }
+}
+
+if (__isJsonToExcelMainModule()) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const fs = require('fs');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

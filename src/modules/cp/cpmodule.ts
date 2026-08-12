@@ -65,14 +65,19 @@ class CPModule {
 
             httpRequestPB.postWithUrl(url,data,(errorCode,respone)=> {
                 console.log("xxxxx");
-                if (errorCode == HttpStatus.OK) {
-                    let serverList = Protobuf.Deserialize(respone, HallPB.GetServerResp)
+                try {
+                    if (errorCode == HttpStatus.OK) {
+                        let serverList = Protobuf.Deserialize(respone, HallPB.GetServerResp)
 
-                    serverList.list.forEach((server) => {
-                        httpRequestPB.setHostInfo(server.name,server.host,server.port)
-                    })
-                    callback?.(true)
-                } else {
+                        serverList.list.forEach((server) => {
+                            httpRequestPB.setHostInfo(server.name,server.host,server.port)
+                        })
+                        callback?.(true)
+                    } else {
+                        callback?.(false)
+                    }
+                } catch (e) {
+                    console.log("LogTag.Socket", "get_server deserialize failed", e)
                     callback?.(false)
                 }
             })
